@@ -1,5 +1,5 @@
 import dbConnect from '@/lib/dbConnect';
-import Sale from '@/models/Sale';
+import Sale from '@/app/models/Sale';
 
 export async function GET() {
   try {
