@@ -1,12 +1,18 @@
+
+
 import mongoose from 'mongoose';
 
 const ProductSchema = new mongoose.Schema({
-  name: String,
-  stock: Number,
-  purchasePrice: Number,
-  salePrice: Number,
-  category: String,
-  barcode: String,
+  name: { type: String, required: true },
+  sku: { type: String, required: true, unique: true },  // Stock Keeping Unit
+  stock: { type: Number, required: true },
+  purchasePrice: { type: Number },
+  salePrice: { type: Number, required: true },
+  category: { type: String },
+  barcode: { type: String }, // optional
+}, {
+  timestamps: true
 });
 
-export default mongoose.models.Product || mongoose.model('Product', ProductSchema);
+const Product = mongoose.models.Product || mongoose.model("Product", ProductSchema);
+export default Product;
