@@ -8,13 +8,11 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Dashboard', href: '/admin' },
+    { label: 'Dashboard', href: '/admin/dashboard' },
     { label: 'Products', href: '/admin/products' },
     { label: 'Purchases', href: '/admin/purchases' },
     { label: 'Sales', href: '/admin/sales' },
     { label: 'Reports', href: '/admin/reports' },
-    { label: 'Users', href: '/admin/users' },
-    { label: 'Settings', href: '/admin/settings' },
   ];
 
   return (

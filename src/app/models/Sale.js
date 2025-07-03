@@ -1,19 +1,12 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const SaleSchema = new mongoose.Schema({
-  items: [
-    {
-      productId: String,
-      name: String,
-      quantity: Number,
-      price: Number,
-    },
-  ],
-  total: Number,
-  date: {
-    type: Date,
-    default: Date.now,
-  },
+  product: { type: String, required: true },
+  quantity: { type: Number, required: true },
+  price: { type: Number, required: true },
+  date: { type: Date, default: Date.now },
+  shopName: { type: String },
+  // add more fields if you want
 });
 
-export default mongoose.models.Sale || mongoose.model('Sale', SaleSchema);
+export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);

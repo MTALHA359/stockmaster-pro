@@ -1,97 +1,185 @@
+// 'use client';
+
+// import { useEffect, useState } from 'react';
+// import AdminSidebar from '../components/AdminSidebar';
+// import Link from 'next/link';
+
+// export default function ProductsPage() {
+//   const [products, setProducts] = useState([]);
+//   const [search, setSearch] = useState('');
+//   const [filtered, setFiltered] = useState([]);
+
+//   useEffect(() => {
+//     async function fetchProducts() {
+//       try {
+//         const res = await fetch('/api/products');
+//         const data = await res.json();
+//         setProducts(data);
+//         setFiltered(data);
+//       } catch (err) {
+//         console.error('Failed to fetch products:', err);
+//       }
+//     }
+
+//     fetchProducts();
+//   }, []);
+
+//   useEffect(() => {
+//     const q = search.toLowerCase();
+//     const result = products.filter((p) =>
+//       (p?.name || '').toLowerCase().includes(q)
+//     );
+//     setFiltered(result);
+//   }, [search, products]);
+
+//   return (
+//     <div className="flex min-h-screen">
+//       <AdminSidebar />
+
+//       <main className="flex-1 p-6 bg-gray-50">
+//         <div className="flex justify-between items-center mb-6">
+//           <h1 className="text-2xl font-bold">All Products</h1>
+//           <Link href="/admin/products/add">
+//             <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+//               Add Product
+//             </button>
+//           </Link>
+//         </div>
+
+//         <input
+//           type="text"
+//           placeholder="Search product name"
+//           value={search}
+//           onChange={(e) => setSearch(e.target.value)}
+//           className="w-full max-w-md p-2 mb-6 border rounded shadow-sm"
+//         />
+
+//         <div className="overflow-x-auto bg-white rounded shadow">
+//           <table className="min-w-full text-sm text-left border border-gray-200">
+//             <thead className="bg-gray-100">
+//               <tr>
+//                 <th className="border px-4 py-2">Name</th>
+//                 <th className="border px-4 py-2">Price</th>
+//                 <th className="border px-4 py-2">Stock</th>
+//                 <th className="border px-4 py-2">Category</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               {filtered.length > 0 ? (
+//                 filtered.map((product, i) => (
+//                   <tr key={i} className="hover:bg-gray-50">
+//                     <td className="border px-4 py-2">{product.name}</td>
+//                     <td className="border px-4 py-2">${product.price}</td>
+//                     <td className="border px-4 py-2">{product.stock}</td>
+//                     <td className="border px-4 py-2">{product.category || '—'}</td>
+//                   </tr>
+//                 ))
+//               ) : (
+//                 <tr>
+//                   <td colSpan="4" className="text-center text-gray-500 py-4">
+//                     No products found.
+//                   </td>
+//                 </tr>
+//               )}
+//             </tbody>
+//           </table>
+//         </div>
+//       </main>
+//     </div>
+//   );
+// }
 
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import AdminSidebar from '../components/AdminSidebar';
+import Link from 'next/link';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [search, setSearch] = useState('');
+  const [filtered, setFiltered] = useState([]);
 
   useEffect(() => {
     async function fetchProducts() {
       try {
         const res = await fetch('/api/products');
-        if (!res.ok) throw new Error('Failed to fetch products');
         const data = await res.json();
         setProducts(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+        setFiltered(data);
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
       }
     }
+
     fetchProducts();
   }, []);
 
-  function handleAddProduct() {
-    router.push('/admin/products/add');
-  }
+  useEffect(() => {
+    const q = search.toLowerCase();
+    const result = products.filter((p) =>
+      (p?.name || '').toLowerCase().includes(q)
+    );
+    setFiltered(result);
+  }, [search, products]);
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar with fixed width */}
-      <div className="w-64">
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar reserved width */}
+      <div className="w-64 bg-white shadow">
         <AdminSidebar />
       </div>
 
-      {/* Main content with left margin to avoid overlay */}
-      <main className="flex-1 p-8 bg-gray-100 overflow-x-auto">
+      {/* Main content */}
+      <main className="flex-1 p-6 overflow-x-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-semibold text-gray-800">Products</h2>
-          <button
-            onClick={handleAddProduct}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-          >
-            + Add Product
-          </button>
+          <h1 className="text-2xl font-bold">All Products</h1>
+          <Link href="/admin/products/add">
+            <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              Add Product
+            </button>
+          </Link>
         </div>
 
-        {loading ? (
-          <p>Loading products...</p>
-        ) : (
-          <div className="overflow-x-auto bg-white rounded shadow">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    SKU
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quantity
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Price
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {products.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                      No products found.
-                    </td>
+        <input
+          type="text"
+          placeholder="Search product name"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-md p-2 mb-6 border rounded shadow-sm"
+        />
+
+        <div className="overflow-x-auto bg-white rounded shadow">
+          <table className="min-w-full text-sm text-left border border-gray-200">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border px-4 py-2">Name</th>
+                <th className="border px-4 py-2">Price</th>
+                <th className="border px-4 py-2">Stock</th>
+                <th className="border px-4 py-2">Category</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length > 0 ? (
+                filtered.map((product, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="border px-4 py-2">{product.name || '—'}</td>
+                    <td className="border px-4 py-2">${product.price || '0'}</td>
+                    <td className="border px-4 py-2">{product.stock || '—'}</td>
+                    <td className="border px-4 py-2">{product.category || '—'}</td>
                   </tr>
-                ) : (
-                  products.map(({ _id, name, sku, quantity, price }) => (
-                    <tr key={_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">{name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{sku}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{quantity}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">${price.toFixed(2)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center text-gray-500 py-4">
+                    No products found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </main>
     </div>
   );

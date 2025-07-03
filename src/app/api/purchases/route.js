@@ -1,15 +1,47 @@
-// src/app/api/purchases/route.js
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
-import Purchase from '@/app/models/Purchase';
-
+import { connectDB } from "@/lib/db";
+import Purchase from "@/app/models/Purchase";
 export async function GET() {
+  await connectDB();
+
   try {
-    await dbConnect();
-    const purchases = await Purchase.find();
-    return NextResponse.json(purchases);
+    const purchases = await Purchase.find({}).sort({ date: -1 });
+    return new Response(JSON.stringify(purchases), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
+  }
+}
+
+export async function POST(req) {
+  await connectDB();
+  const data = await req.json();
+
+  if (!data.product || !data.quantity || !data.price) {
+    return new Response(
+      JSON.stringify({ error: "Product, quantity and price are required" }),
+      { status: 400 }
+    );
+  }
+
+  try {
+    const purchase = await Purchase.create({
+      product: data.product,
+      quantity: Number(data.quantity),
+      price: Number(data.price),
+      shopName: data.shopName || "",
+      address: data.address || "",
+      contact: data.contact || "",
+      date: data.date ? new Date(data.date) : new Date(),
+    });
+
+    return new Response(JSON.stringify(purchase), { status: 201 });
   } catch (error) {
-    console.error('❌ Error fetching purchases:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
   }
 }
