@@ -1,153 +1,167 @@
 'use client';
+import { useState, useEffect, useRef } from 'react';
+import ManagerSidebar from '../components/ManagerSidebar'; // Adjust the path as needed
 
-import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
-import ManagerSidebar from "../components/ManagerSidebar";
+export default function ManagerSalePage() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [productResults, setProductResults] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]); // { productId, name, price, stock, quantity }
+  const debounceTimeout = useRef(null);
 
-export default function CreateSalePage() {
-  const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-
+  // Search products from API
   useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    const res = await fetch('/api/products');
-    const data = await res.json();
-    setProducts(data);
-    setLoading(false);
-  };
-
-  const addToCart = (product) => {
-    const exists = cart.find(item => item._id === product._id);
-    if (exists) {
-      setCart(cart.map(item =>
-        item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item
-      ));
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    if (searchTerm.trim() === '') {
+      setProductResults([]);
+      return;
     }
+    debounceTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products?search=${encodeURIComponent(searchTerm)}`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        setProductResults(data);
+      } catch (error) {
+        console.error(error);
+        setProductResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(debounceTimeout.current);
+  }, [searchTerm]);
 
-    // Subtract from stock immediately
-    setProducts(products.map(p =>
-      p._id === product._id ? { ...p, stock: p.stock - 1 } : p
-    ));
-  };
+  // Add product to selected items list (if not already added)
+  function addProduct(product) {
+    if (selectedItems.find(item => item.productId === product._id)) return;
+    setSelectedItems([
+      ...selectedItems,
+      { productId: product._id, name: product.name, price: product.price, stock: product.stock, quantity: 1 }
+    ]);
+  }
 
-  const changeQuantity = (id, delta) => {
-    setCart(cart =>
-      cart.map(item =>
-        item._id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
+  // Update quantity for a selected product
+  function updateQuantity(productId, newQuantity) {
+    setSelectedItems(current =>
+      current.map(item =>
+        item.productId === productId
+          ? { ...item, quantity: Math.min(Math.max(newQuantity, 1), item.stock) }
+          : item
       )
     );
-  };
+  }
 
-  const generateBill = () => {
-    const total = cart.reduce((sum, item) => sum + item.salePrice * item.quantity, 0);
-    return `Total Bill: Rs ${total}`;
-  };
+  // Calculate total price of all selected items
+  const totalPrice = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const json = XLSX.utils.sheet_to_json(worksheet);
-      setProducts(json.map((p, i) => ({
-        _id: i.toString(),
-        name: p.name,
-        salePrice: Number(p.salePrice),
-        stock: Number(p.stock),
-        category: p.category || 'Uncategorized',
-      })));
-    };
-    reader.readAsArrayBuffer(file);
-  };
+  // Submit sale: send to backend and update stocks
+  async function handleSubmit() {
+    if (selectedItems.length === 0) {
+      alert('Select at least one product to sell.');
+      return;
+    }
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    try {
+      const res = await fetch('/api/manager/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: selectedItems }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(`Error: ${data.error}`);
+        return;
+      }
+
+      alert('Sale successful!');
+      setSelectedItems([]);
+      setSearchTerm('');
+      setProductResults([]);
+    } catch (error) {
+      alert('Failed to submit sale');
+      console.error(error);
+    }
+  }
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen bg-gray-50">
       <ManagerSidebar />
-      <main className="ml-64 w-full min-h-screen bg-gray-50 p-6">
-        <h1 className="text-2xl font-bold mb-4">🛒 Create Sale</h1>
 
-        <div className="mb-6 flex items-center gap-4">
-          <input
-            type="text"
-            placeholder="🔍 Search product"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="border p-2 rounded w-1/2"
-          />
-          <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleFileUpload}
-            className="border p-2 rounded"
-          />
-        </div>
+      <main className="flex-grow p-6">
+        <h1 className="text-2xl font-bold mb-4">Manager Sale Page</h1>
 
-        {loading ? (
-          <p>Loading products...</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h2 className="text-lg font-semibold mb-2">📦 Products</h2>
-              <ul className="space-y-2 max-h-[500px] overflow-y-auto">
-                {filteredProducts.map(p => (
-                  <li key={p._id} className="flex justify-between items-center bg-white p-2 border rounded">
-                    <span>{p.name} - Rs {p.salePrice} - Stock: {p.stock}</span>
-                    <button
-                      onClick={() => addToCart(p)}
-                      className="bg-blue-500 text-white px-3 py-1 rounded"
-                      disabled={p.stock <= 0}
-                    >
-                      Add
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Search Input */}
+        <input
+          type="text"
+          placeholder="Search products..."
+          className="border p-2 mb-4 w-full max-w-lg"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
 
-            <div>
-              <h2 className="text-lg font-semibold mb-2">🛒 Cart</h2>
-              <ul className="space-y-2">
-                {cart.map((item, idx) => (
-                  <li key={idx} className="flex justify-between items-center bg-white p-2 border rounded">
-                    <span>{item.name} x {item.quantity}</span>
-                    <div className="flex items-center space-x-2">
-                      <button onClick={() => changeQuantity(item._id, -1)} className="px-2 bg-gray-300 rounded">-</button>
-                      <span>{item.quantity}</span>
-                      <button onClick={() => changeQuantity(item._id, 1)} className="px-2 bg-gray-300 rounded">+</button>
-                    </div>
-                    <span className="font-semibold">Rs {item.salePrice * item.quantity}</span>
-                  </li>
-                ))}
-              </ul>
+        {/* Product Search Results */}
+        <ul className="border mb-4 max-h-40 overflow-auto max-w-lg">
+          {productResults.length === 0 && searchTerm && <li className="p-2">No products found.</li>}
+          {productResults.map(product => (
+            <li
+              key={product._id}
+              className="p-2 cursor-pointer hover:bg-gray-100 flex justify-between max-w-lg"
+              onClick={() => addProduct(product)}
+            >
+              <span>{product.name}</span>
+              <span>Stock: {product.stock}</span>
+            </li>
+          ))}
+        </ul>
 
-              <div className="mt-4 font-semibold text-right text-lg">
-                {generateBill()}
-              </div>
-              <div className="mt-4 text-right">
-                <button
-                  onClick={() => window.print()}
-                  className="bg-green-600 text-white px-4 py-2 rounded shadow"
-                >
-                  🖨️ Print Bill
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Selected Items Table */}
+        {selectedItems.length > 0 && (
+          <table className="w-full max-w-lg mb-4 border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Product</th>
+                <th className="border border-gray-300 p-2">Price</th>
+                <th className="border border-gray-300 p-2">Stock</th>
+                <th className="border border-gray-300 p-2">Quantity</th>
+                <th className="border border-gray-300 p-2">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedItems.map(item => (
+                <tr key={item.productId}>
+                  <td className="border border-gray-300 p-2">{item.name}</td>
+                  <td className="border border-gray-300 p-2">${item.price.toFixed(2)}</td>
+                  <td className="border border-gray-300 p-2">{item.stock}</td>
+                  <td className="border border-gray-300 p-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={item.stock}
+                      value={item.quantity}
+                      onChange={e => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
+                      className="w-16 border p-1"
+                    />
+                  </td>
+                  <td className="border border-gray-300 p-2">${(item.price * item.quantity).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan="4" className="text-right font-bold p-2">Total:</td>
+                <td className="font-bold p-2">${totalPrice.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
         )}
+
+        {/* Submit Button */}
+        <button
+          onClick={handleSubmit}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          disabled={selectedItems.length === 0}
+        >
+          Submit Sale
+        </button>
       </main>
     </div>
   );
