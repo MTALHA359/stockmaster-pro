@@ -1,12 +1,16 @@
-import { connectDB } from "@/lib/db";
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/mongodb";
+import Product from "@/app/models/Product";
 import Sale from "@/app/models/Sale";
+
+// ===== GET: Get sales analytics =====
 export async function GET() {
   await connectDB();
 
   try {
     const sales = await Sale.find({}).sort({ date: -1 }).lean();
 
-    // Calculate top-selling products by total quantity sold
+    // Top-selling products by total quantity sold
     const productMap = {};
     sales.forEach(({ product, quantity }) => {
       if (!productMap[product]) productMap[product] = 0;
@@ -28,22 +32,60 @@ export async function GET() {
       0
     );
 
-    return new Response(
-      JSON.stringify({
+    return NextResponse.json(
+      {
         sales,
         topProducts,
         totalSalesCount,
         totalRevenue,
         totalQuantitySold,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
+      },
+      { status: 200 }
     );
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
+    console.error("GET /api/sales error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// ===== POST: Create new sale and update stock =====
+export async function POST(req) {
+  try {
+    await connectDB();
+
+    const body = await req.json();
+    const { productId, sku, quantity, salePrice } = body;
+
+    if (!productId || !sku || !quantity || !salePrice) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    if (product.stock < quantity) {
+      return NextResponse.json({ error: "Not enough stock" }, { status: 400 });
+    }
+
+    const newSale = new Sale({
+      productId,
+      product: product.name, // to reference name in GET
+      sku,
+      quantity,
+      price: salePrice,
+      date: new Date(),
     });
+
+    await newSale.save();
+
+    product.stock -= quantity;
+    await product.save();
+
+    return NextResponse.json({ success: true, sale: newSale }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/sales error:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
