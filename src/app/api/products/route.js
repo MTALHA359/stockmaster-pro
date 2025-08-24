@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import connectToDB from '@/lib/mongodb';
+import { connectDB } from "@/lib/mongodb";
 import Product from '@/app/models/Product';
 
 // CREATE new product
