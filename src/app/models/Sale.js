@@ -1,11 +1,29 @@
 import mongoose from "mongoose";
 
-const saleSchema = new mongoose.Schema({
-  product: { type: String, required: true },
-  quantity: { type: Number, required: true },
-  amount: { type: Number, required: true },
-  date: { type: Date, default: Date.now },
-});
+const SaleSchema = new mongoose.Schema(
+  {
+    productName: {
+      type: String,
+      required: [true, "Product name is required"],
+      trim: true,
+    },
+    quantity: {
+      type: Number,
+      required: [true, "Quantity is required"],
+      min: [1, "Quantity must be at least 1"],
+    },
+    price: {
+      type: Number,
+      required: [true, "Price is required"],
+      min: [0, "Price must be >= 0"],
+    },
+    staffName: {
+      type: String,
+      required: [true, "Staff name is required"],
+      trim: true,
+    },
+  },
+  { timestamps: true }
+);
 
-const Sale = mongoose.models.Sale || mongoose.model("Sale", saleSchema);
-export default Sale;
+export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);
